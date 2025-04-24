@@ -1,10 +1,11 @@
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, ContextTypes, filters
 )
-
-import os
 
 TOKEN = '7169303851:AAEWZX2pwZtLdsduVGagwJv04kHMQMoUheI'
 ADMIN_CHAT_ID = 7039411923
@@ -74,11 +75,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Напишите /start для начала.")
 
+# Фиктивный HTTP-сервер для Render
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), DummyHandler)
+    print(f"🌐 Фиктивный сервер запущен на порту {port}")
+    server.serve_forever()
+
 if __name__ == '__main__':
     print("🗂️ Запущен файл:", os.path.abspath(__file__))
 
-    app = ApplicationBuilder().token(TOKEN).build()
+    # Запускаем фиктивный сервер в отдельном потоке
+    threading.Thread(target=run_dummy_server, daemon=True).start()
 
+    # Запускаем Telegram-бота
+    app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
